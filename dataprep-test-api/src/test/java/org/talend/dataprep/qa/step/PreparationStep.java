@@ -1,19 +1,23 @@
 package org.talend.dataprep.qa.step;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.springframework.http.HttpStatus.OK;
 import static org.talend.dataprep.qa.config.FeatureContext.suffixName;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
-
 import javax.validation.constraints.NotNull;
 
 import org.apache.commons.lang3.StringUtils;
@@ -101,7 +105,7 @@ public class PreparationStep extends DataPrepStep {
 
         if (params.get("actionsList") != null) {
             List<Action> actionsList = prepDet.actions;
-            checkActionsListOfPrepa(actionsList, params.get("actionsList").toString());
+            checkActionsListOfPrepa(actionsList, params.get("actionsList"));
         }
     }
 
@@ -314,5 +318,43 @@ public class PreparationStep extends DataPrepStep {
         List<Action> expectedActionsList =
                 objectMapper.readValue(expectedActionsListStream, PreparationDetails.class).actions;
         assertEquals(expectedActionsList, actionsList);
+    }
+
+    @Then("^I check that the preparation \"([^\"]*)\" exists with dataset values:$")
+    public void iCheckThatThePreparationExistsWithValues(String preparationName, Map<String, String> fields)
+            throws Throwable {
+        String prepPath = util.extractPathFromFullName(getSuffixedPrepName(preparationName));
+
+        final Callable<Boolean> isDatasetWithFields = () -> {
+            FolderContent folderContent = folderUtil.listPreparation(prepPath);
+
+            assertNotNull(folderContent);
+
+            final List<PreparationDetails> preparations = folderContent.preparations;
+
+            assertThat(preparations, hasSize(1));
+            assertEquals(suffixName(preparationName), preparations.get(0).name);
+
+            final PreparationDetails.Dataset dataset = preparations.get(0).dataset;
+
+            for (Map.Entry<String, String> entry : fields.entrySet()) {
+                String fieldName = entry.getKey();
+                String fieldValue = entry.getValue();
+
+                Field field = dataset.getClass().getDeclaredField(fieldName);
+                field.setAccessible(true);
+                if (fieldName.equalsIgnoreCase("datasetName")) {
+                    fieldValue = suffixName(fieldValue);
+                }
+
+                if (!fieldValue.equals(field.get(dataset).toString())) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        api.waitResponse("Update of the dataset name").until(isDatasetWithFields, is(true));
+
     }
 }

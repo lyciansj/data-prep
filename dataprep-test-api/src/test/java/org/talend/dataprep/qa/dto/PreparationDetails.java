@@ -21,6 +21,8 @@ public class PreparationDetails extends NamedItem {
 
     public String dataSetId;
 
+    public Dataset dataset;
+
     /**
      * Update the {@link Action#id} from the steps information.
      */
