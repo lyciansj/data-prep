@@ -86,11 +86,12 @@ public class OSDataPrepAPIHelper {
 
     private static final String PATH = "path";
 
-    private static final int TIME_OUT = 20;
+    /** Default time out delay in seconds for Awaitability timed actions. */
+    private static final int TIME_OUT_DEFAULT = 20;
 
-    private static final int POLL_DELAY = 1;
+    private static final int POLL_DELAY_DEFAULT = 1;
 
-    private static final int POLL_INTERVAL = 1;
+    private static final int POLL_INTERVAL_DEFAULT = 1;
 
     private VerboseMode restAssuredDebug = NONE;
 
@@ -646,25 +647,16 @@ public class OSDataPrepAPIHelper {
         return executionContext;
     }
 
-    /**
-     * Description of the Integration Test execution context. This is useful to manage url changes between OnPremise &
-     * Cloud context.
-     */
-    public enum ITExecutionContext {
-        ON_PREMISE, //
-        CLOUD
-    }
-
     public ConditionFactory waitResponse(String message) {
-        return waitResponse(message, TIME_OUT);
+        return waitResponse(message, TIME_OUT_DEFAULT);
     }
 
     public ConditionFactory waitResponse(String message, long timeOut) {
-        return waitResponse(message, timeOut, POLL_DELAY, POLL_INTERVAL);
+        return waitResponse(message, timeOut, POLL_DELAY_DEFAULT, POLL_INTERVAL_DEFAULT);
     }
 
     public ConditionFactory waitResponse(String message, long timeOut, long pollInterval) {
-        return waitResponse(message, timeOut, POLL_DELAY, pollInterval);
+        return waitResponse(message, timeOut, POLL_DELAY_DEFAULT, pollInterval);
     }
 
     public ConditionFactory waitResponse(String message, long timeOut, long pollDelay, long pollInterval) {
@@ -675,5 +667,14 @@ public class OSDataPrepAPIHelper {
                 .pollDelay(pollDelay, TimeUnit.SECONDS) //
                 .await(message) //
                 .atMost(timeOut, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Description of the Integration Test execution context. This is useful to manage url changes between OnPremise &
+     * Cloud context.
+     */
+    public enum ITExecutionContext {
+        ON_PREMISE, //
+        CLOUD
     }
 }

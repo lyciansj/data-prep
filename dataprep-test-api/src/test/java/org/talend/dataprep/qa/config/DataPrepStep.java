@@ -14,14 +14,12 @@
 package org.talend.dataprep.qa.config;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.awaitility.Awaitility.with;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 import static org.talend.dataprep.qa.config.FeatureContext.suffixName;
 
@@ -30,16 +28,11 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+
 import javax.annotation.PostConstruct;
 
-import cucumber.api.DataTable;
-import cucumber.api.java.en.Then;
-import org.awaitility.core.ConditionFactory;
-import org.hamcrest.Matchers;
-import org.hamcrest.core.Is;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +56,8 @@ import org.talend.dataprep.qa.util.folder.FolderUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.restassured.response.Response;
 
+import cucumber.api.DataTable;
+
 /**
  * Base class for all DataPrep step classes.
  */
@@ -82,6 +77,9 @@ public abstract class DataPrepStep {
     protected static final String DATASET_NAME_KEY = "name";
 
     protected static final String DATASET_ID_KEY = "dataSetId";
+
+    /** Time out delay in seconds to get dataset content. */
+    private static final Integer GET_DATASET_CONTENT_TIMEOUT = 60;
 
     /**
      * This class' logger.
@@ -157,13 +155,6 @@ public abstract class DataPrepStep {
         };
     }
 
-    protected class CleanAfterException extends RuntimeException {
-
-        CleanAfterException(String s) {
-            super(s);
-        }
-    }
-
     protected void checkColumnNames(String datasetOrPreparationName, List<String> expectedColumnNames,
             List<String> actual) {
         assertNotNull("No columns in \"" + datasetOrPreparationName + "\".", actual);
@@ -178,23 +169,25 @@ public abstract class DataPrepStep {
      * Returns the dataset content, once all DQ analysis are done and so all fields are up-to-date.
      *
      * @param datasetId the id of the dataset
-     * @param tql       the TQL filter to apply to the dataset
+     * @param tql the TQL filter to apply to the dataset
      * @return the up-to-date dataset content
      */
     protected DatasetContent getDatasetContent(String datasetId, String tql) throws Exception {
         AtomicReference<DatasetContent> datasetContentReference = new AtomicReference<>();
         // TODO I guess this wait is useless since we use {DataPrepStep#checkDatasetMetadataStatus} before
-        api.waitResponse("Waiting frequency table from dataset metadata of " + datasetId).until(() -> {
-            Response response = api.getDataset(datasetId, tql);
-            response.then().statusCode(200);
+        api
+                .waitResponse("Waiting frequency table from dataset metadata of " + datasetId, GET_DATASET_CONTENT_TIMEOUT)
+                .until(() -> {
+                    Response response = api.getDataset(datasetId, tql);
+                    response.then().statusCode(200);
 
-            DatasetContent datasetContent = response.as(DatasetContent.class);
-            datasetContentReference.set(datasetContent);
-            return datasetContent.metadata.columns //
-                    .stream() //
-                    .findFirst() //
-                    .orElse(new ContentMetadataColumn()).statistics.frequencyTable;
-        }, is(not(empty())));
+                    DatasetContent datasetContent = response.as(DatasetContent.class);
+                    datasetContentReference.set(datasetContent);
+                    return datasetContent.metadata.columns //
+                            .stream() //
+                            .findFirst() //
+                            .orElse(new ContentMetadataColumn()).statistics.frequencyTable;
+                }, is(not(empty())));
 
         return datasetContentReference.get();
     }
@@ -267,6 +260,13 @@ public abstract class DataPrepStep {
         checkRecords(preparation.records, expected.get("records"));
         checkQualityPerColumn(preparation.metadata.columns, expected.get("quality"));
         checkSampleRecordsCount(preparation.metadata.records, expected.get("sample_records_count"));
+    }
+
+    protected class CleanAfterException extends RuntimeException {
+
+        CleanAfterException(String s) {
+            super(s);
+        }
     }
 
 }
