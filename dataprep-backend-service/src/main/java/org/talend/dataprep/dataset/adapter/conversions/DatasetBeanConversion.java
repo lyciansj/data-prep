@@ -12,9 +12,10 @@
 
 package org.talend.dataprep.dataset.adapter.conversions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.talend.dataprep.conversions.BeanConversionService.fromBean;
+
+import java.util.function.BiFunction;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -33,9 +34,9 @@ import org.talend.dataprep.dataset.adapter.Dataset;
 import org.talend.dataprep.dataset.adapter.Datastore;
 import org.talend.dataprep.processor.BeanConversionServiceWrapper;
 
-import java.util.function.BiFunction;
-
-import static org.talend.dataprep.conversions.BeanConversionService.fromBean;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Bean Conversion from {@link Dataset} to {@link DataSetMetadata}
@@ -156,7 +157,6 @@ public class DatasetBeanConversion extends BeanConversionServiceWrapper {
                         .valueOf(datasetMetadata.getGovernance().getCertificationStep().name()));
             }
             datasetDTO.setType(datasetMetadata.getContent().getMediaType());
-            datasetDTO.setRecords(datasetMetadata.getContent().getNbRecords());
 
             return datasetDTO;
         };
@@ -173,7 +173,6 @@ public class DatasetBeanConversion extends BeanConversionServiceWrapper {
                 dataset.setDataSetMetadataLegacy(new Dataset.DataSetMetadataLegacy());
             }
             dataset.getDataSetMetadataLegacy().setDraft(datasetDTO.isDraft());
-            dataset.getDataSetMetadataLegacy().setNbRecords(datasetDTO.getRecords());
 
             return dataset;
 
@@ -193,7 +192,6 @@ public class DatasetBeanConversion extends BeanConversionServiceWrapper {
             Dataset.DataSetMetadataLegacy dataSetMetadataLegacy = dataset.getDataSetMetadataLegacy();
             if (dataSetMetadataLegacy != null) {
                 datasetDTO.setDraft(dataSetMetadataLegacy.isDraft());
-                datasetDTO.setRecords(dataSetMetadataLegacy.getNbRecords());
             }
 
             return datasetDTO;

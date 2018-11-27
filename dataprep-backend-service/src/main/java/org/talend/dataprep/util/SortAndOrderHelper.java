@@ -12,8 +12,16 @@
 
 package org.talend.dataprep.util;
 
-import com.google.common.base.CaseFormat;
-import com.google.common.base.Converter;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.talend.daikon.exception.ExceptionContext.build;
+import static org.talend.dataprep.exception.error.CommonErrorCodes.ILLEGAL_ORDER_FOR_LIST;
+import static org.talend.dataprep.exception.error.CommonErrorCodes.ILLEGAL_SORT_FOR_LIST;
+
+import java.beans.PropertyEditor;
+import java.util.Comparator;
+import java.util.Optional;
+import java.util.function.Function;
+
 import org.talend.dataprep.api.dataset.DataSetMetadata;
 import org.talend.dataprep.api.dataset.DatasetDTO;
 import org.talend.dataprep.api.folder.Folder;
@@ -22,15 +30,8 @@ import org.talend.dataprep.api.preparation.PreparationDTO;
 import org.talend.dataprep.dataset.service.UserDataSetMetadata;
 import org.talend.dataprep.exception.TDPException;
 
-import java.beans.PropertyEditor;
-import java.util.Comparator;
-import java.util.Optional;
-import java.util.function.Function;
-
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.talend.daikon.exception.ExceptionContext.build;
-import static org.talend.dataprep.exception.error.CommonErrorCodes.ILLEGAL_ORDER_FOR_LIST;
-import static org.talend.dataprep.exception.error.CommonErrorCodes.ILLEGAL_SORT_FOR_LIST;
+import com.google.common.base.CaseFormat;
+import com.google.common.base.Converter;
 
 /**
  * Utility class used to sort and order DataSets or Preparations.
@@ -77,17 +78,13 @@ public final class SortAndOrderHelper {
          */
         CREATION_DATE,
         /**
-         * Last modification date. {@link Preparation#lastModificationDate}
+@         * Last modification date. {@link Preparation#getLastModificationDate()}
          */
         LAST_MODIFICATION_DATE,
         /**
          * Number of steps of a preparation.
          */
         NB_STEPS,
-        /**
-         * Number of records of a data set: {@link org.talend.dataprep.api.dataset.DataSetContent#nbRecords}.
-         */
-        NB_RECORDS,
         /**
          * Name of the dataset referred by this entity.
          * When listing preparations, allows sort on dataset name.
@@ -184,12 +181,6 @@ public final class SortAndOrderHelper {
             case LAST_MODIFICATION_DATE:
                 keyExtractor = DatasetDTO::getLastModificationDate;
                 break;
-            case NB_RECORDS:
-                keyExtractor = datasetDTO -> Optional
-                        .ofNullable(datasetDTO)
-                        .map(m -> datasetDTO.getRecords())
-                        .orElse(Long.MIN_VALUE);
-                break;
             default:
                 // this should not be possible
                 throw new TDPException(ILLEGAL_SORT_FOR_LIST, build().put("sort", sortKey));
@@ -236,13 +227,6 @@ public final class SortAndOrderHelper {
             case LAST_MODIFICATION_DATE:
                 keyExtractor = DataSetMetadata::getLastModificationDate;
                 break;
-            case NB_RECORDS:
-                keyExtractor = metadata -> Optional
-                        .ofNullable(metadata)
-                        .filter(m -> m.getContent() != null)
-                        .map(m -> m.getContent().getNbRecords())
-                        .orElse(Long.MIN_VALUE);
-                break;
             default:
                 // this should not be possible
                 throw new TDPException(ILLEGAL_SORT_FOR_LIST, build().put("sort", sortKey));
@@ -284,7 +268,6 @@ public final class SortAndOrderHelper {
         } else {
             switch (sortKey) {
             // In case of API call error, default to NAME sort
-            case NB_RECORDS:
             case NAME:
                 keyExtractor = SortAndOrderHelper::extractPreparationName;
                 break;
@@ -344,7 +327,6 @@ public final class SortAndOrderHelper {
             // In case of API call error, default to NAME sort
             case AUTHOR:
             case DATASET_NAME:
-            case NB_RECORDS:
             case NB_STEPS:
             case NAME:
                 keyExtractor = SortAndOrderHelper::extractFolderName;
